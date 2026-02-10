@@ -3,11 +3,13 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "scripts": {
-    "dev": "node --watch src/server.js",
-    "start": "node src/server.js",
-    "seed:products": "node src/seeds/index.js"
-  },
+"scripts": {
+  "dev": "node --watch src/server.js",
+  "start": "node src/server.js",
+  "build": "tsc",
+  "seed:products": "node src/seeds/index.js"
+}
+,
   "keywords": [],
   "author": "",
   "license": "ISC",

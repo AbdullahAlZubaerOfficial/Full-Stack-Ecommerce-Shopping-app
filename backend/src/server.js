@@ -5,7 +5,6 @@ import { serve } from "inngest/express";
 import cors from "cors";
 
 import { functions, inngest } from "./config/inngest.js";
-
 import { ENV } from "./config/env.js";
 import { connectDB } from "./config/db.js";
 
@@ -19,29 +18,29 @@ import paymentRoutes from "./routes/payment.route.js";
 
 const app = express();
 
-const __dirname = path.resolve();
+// Connect to MongoDB once
+await connectDB();
 
-// special handling: Stripe webhook needs raw body BEFORE any body parsing middleware
-// apply raw body parser conditionally only to webhook endpoint
+// Middleware
 app.use(
   "/api/payment",
   (req, res, next) => {
     if (req.originalUrl === "/api/payment/webhook") {
       express.raw({ type: "application/json" })(req, res, next);
     } else {
-      express.json()(req, res, next); // parse json for non-webhook routes
+      express.json()(req, res, next);
     }
   },
   paymentRoutes
 );
 
 app.use(express.json());
-app.use(clerkMiddleware()); // adds auth object under the req => req.auth
+app.use(clerkMiddleware());
 
-// CORS: Allow production URL, localhost, and requests without origin (mobile)
+// CORS
 const corsOptions = {
   origin: function (origin, callback) {
-    if (!origin) return callback(null, true); // Allow requests without origin (like mobile apps)
+    if (!origin) return callback(null, true);
 
     const allowedOrigins = [
       ENV.CLIENT_URL,
@@ -59,14 +58,14 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
-// Simple request logger
+// Request logger
 app.use((req, res, next) => {
   console.log(`[REQ] ${req.method} ${req.originalUrl}`);
   next();
 });
 
+// Routes
 app.use("/api/inngest", serve({ client: inngest, functions }));
-
 app.use("/api/admin", adminRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/orders", orderRoutes);
@@ -74,13 +73,14 @@ app.use("/api/reviews", reviewRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);
 
-
+// Health check
 app.get("/api/health", (req, res) => {
   res.status(200).json({ message: "Success" });
 });
 
-// make our app ready for deployment
+// Serve admin frontend in production
 if (ENV.NODE_ENV === "production") {
+  const __dirname = path.resolve();
   app.use(express.static(path.join(__dirname, "../admin/dist")));
 
   app.get("*", (req, res) => {
@@ -88,11 +88,5 @@ if (ENV.NODE_ENV === "production") {
   });
 }
 
-const startServer = async () => {
-  await connectDB();
-  app.listen(ENV.PORT, () => {
-    console.log("Server is up and running");
-  });
-};
-
-startServer();
+// Export the app for Vercel
+export default app;
